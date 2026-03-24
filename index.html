@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Optics Simulator — Poincaré Sphere</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0e17;color:#e0e6f0;overflow:hidden;height:100vh;display:flex}
+
+  /* Sidebar */
+  #sidebar{width:370px;min-width:370px;background:#111827;border-right:1px solid #1e293b;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  #sidebar-header{padding:16px 20px;border-bottom:1px solid #1e293b}
+  #sidebar-header h1{font-size:16px;font-weight:600;color:#60a5fa;letter-spacing:0.5px}
+  #sidebar-header p{font-size:11px;color:#64748b;margin-top:4px}
+
+  /* Component palette */
+  #palette{padding:12px 20px;border-bottom:1px solid #1e293b}
+  #palette h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px}
+  #palette-buttons{display:flex;gap:6px;flex-wrap:wrap}
+  .palette-btn{padding:6px 12px;border:1px solid #334155;border-radius:6px;background:#1e293b;color:#cbd5e1;font-size:12px;cursor:pointer;transition:all 0.15s}
+  .palette-btn:hover{background:#2563eb;border-color:#3b82f6;color:#fff}
+
+  /* Component list */
+  #components-list{flex:1;overflow-y:auto;padding:12px 20px}
+  #components-list::-webkit-scrollbar{width:6px}
+  #components-list::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+  .component-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;position:relative;transition:border-color 0.15s}
+  .component-card:hover{border-color:#3b82f6}
+  .component-card .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .component-card .card-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .card-icon{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+  .icon-pol{background:#ef4444;color:#fff}
+  .icon-hwp{background:#f59e0b;color:#fff}
+  .icon-qwp{background:#10b981;color:#fff}
+  .icon-bs{background:#8b5cf6;color:#fff}
+  .remove-btn{background:none;border:none;color:#64748b;cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;border-radius:4px}
+  .remove-btn:hover{background:#7f1d1d;color:#fca5a5}
+  .slider-row{display:flex;align-items:center;gap:8px}
+  .slider-row label{font-size:11px;color:#94a3b8;min-width:42px}
+  .slider-row input[type=range]{flex:1;height:4px;-webkit-appearance:none;background:#334155;border-radius:2px;outline:none}
+  .slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid #1e293b}
+  .slider-row .angle-val{font-size:12px;color:#60a5fa;min-width:36px;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* State info */
+  #state-panel{padding:12px 20px;border-top:1px solid #1e293b;background:#0f172a}
+  #state-panel h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px}
+  .state-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px}
+  .state-label{color:#64748b}
+  .state-value{color:#60a5fa;font-family:'Consolas','SF Mono',monospace;text-align:right}
+
+  /* Jones matrix display */
+  #jones-panel{padding:12px 20px;border-top:1px solid #1e293b;background:#0f172a}
+  #jones-panel h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px}
+  .jones-matrix{font-family:'Consolas','SF Mono',monospace;font-size:11px;color:#a78bfa;line-height:1.5;white-space:pre}
+
+  /* Main viewport */
+  #viewport{flex:1;position:relative;background:#0a0e17}
+  #three-canvas{width:100%;height:100%;display:block}
+
+  /* Overlay labels */
+  #sphere-labels{position:absolute;top:0;left:0;pointer-events:none;width:100%;height:100%}
+
+  /* Info overlay */
+  #info-overlay{position:absolute;top:16px;right:16px;background:rgba(15,23,42,0.85);border:1px solid #1e293b;border-radius:8px;padding:12px 16px;font-size:11px;color:#94a3b8;max-width:240px;line-height:1.5;backdrop-filter:blur(8px)}
+  #info-overlay strong{color:#60a5fa}
+
+  /* Initial state selector */
+  #init-state{padding:8px 20px;border-bottom:1px solid #1e293b}
+  #init-state h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px}
+  #init-state select{width:100%;padding:6px 8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#cbd5e1;font-size:12px;outline:none}
+  #init-state select:focus{border-color:#3b82f6}
+
+  /* Beam path visualization */
+  #beam-path{padding:10px 20px;border-bottom:1px solid #1e293b}
+  #beam-path h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px}
+  #beam-svg{width:100%;height:40px}
+
+  /* Empty state */
+  .empty-msg{text-align:center;padding:32px 16px;color:#475569;font-size:13px;line-height:1.6}
+  .empty-msg span{font-size:24px;display:block;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>Quantum Optics Simulator</h1>
+    <p>Build optical experiments &middot; Watch polarization evolve on the Poincar&eacute; Sphere</p>
+  </div>
+
+  <div id="init-state">
+    <h3>Initial Polarization</h3>
+    <select id="initial-state" onchange="update()">
+      <option value="H">|H⟩ — Horizontal</option>
+      <option value="V">|V⟩ — Vertical</option>
+      <option value="D">|D⟩ — Diagonal (+45°)</option>
+      <option value="A">|A⟩ — Anti-diagonal (−45°)</option>
+      <option value="R">|R⟩ — Right Circular</option>
+      <option value="L">|L⟩ — Left Circular</option>
+    </select>
+  </div>
+
+  <div id="palette">
+    <h3>Add Component</h3>
+    <div id="palette-buttons">
+      <button class="palette-btn" onclick="addComponent('polarizer')">Polarizer</button>
+      <button class="palette-btn" onclick="addComponent('hwp')">Half-Wave Plate</button>
+      <button class="palette-btn" onclick="addComponent('qwp')">Quarter-Wave Plate</button>
+      <button class="palette-btn" onclick="addComponent('beamsplitter')">Beam Splitter</button>
+    </div>
+  </div>
+
+  <div id="beam-path">
+    <h3>Beam Path</h3>
+    <svg id="beam-svg" viewBox="0 0 330 40"></svg>
+  </div>
+
+  <div id="components-list">
+    <div class="empty-msg" id="empty-msg">
+      <span>⬆</span>
+      Add optical components above<br>to start building your experiment
+    </div>
+  </div>
+
+  <div id="jones-panel">
+    <h3>Combined Jones Matrix</h3>
+    <div class="jones-matrix" id="jones-display">[ 1  0 ]
+[ 0  1 ]</div>
+  </div>
+
+  <div id="state-panel">
+    <h3>Output State</h3>
+    <div class="state-grid">
+      <span class="state-label">Jones Vector:</span>
+      <span class="state-value" id="sv-jones">[ 1, 0 ]</span>
+      <span class="state-label">Stokes (S₁,S₂,S₃):</span>
+      <span class="state-value" id="sv-stokes">(1, 0, 0)</span>
+      <span class="state-label">Polarization:</span>
+      <span class="state-value" id="sv-type">Horizontal</span>
+      <span class="state-label">Intensity:</span>
+      <span class="state-value" id="sv-intensity">100%</span>
+    </div>
+  </div>
+</div>
+
+<div id="viewport">
+  <canvas id="three-canvas"></canvas>
+  <div id="info-overlay">
+    <strong>Poincar&eacute; Sphere</strong> ≡ Bloch Sphere<br><br>
+    <strong>X-axis:</strong> H ↔ V polarization<br>
+    <strong>Y-axis:</strong> D ↔ A (±45°)<br>
+    <strong>Z-axis:</strong> R ↔ L circular<br><br>
+    Drag to rotate &middot; Scroll to zoom
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============ Complex number helpers ============
+const C = (re, im=0) => [re, im];
+const cadd = ([a,b],[c,d]) => [a+c, b+d];
+const csub = ([a,b],[c,d]) => [a-c, b-d];
+const cmul = ([a,b],[c,d]) => [a*c - b*d, a*d + b*c];
+const cconj = ([a,b]) => [a, -b];
+const cabs2 = ([a,b]) => a*a + b*b;
+const cabs = c => Math.sqrt(cabs2(c));
+const cscale = ([a,b], s) => [a*s, b*s];
+
+// 2x2 complex matrix: [[a,b],[c,d]]
+const mat2mul = (M, N) => [
+  [cadd(cmul(M[0][0],N[0][0]), cmul(M[0][1],N[1][0])), cadd(cmul(M[0][0],N[0][1]), cmul(M[0][1],N[1][1]))],
+  [cadd(cmul(M[1][0],N[0][0]), cmul(M[1][1],N[1][0])), cadd(cmul(M[1][0],N[0][1]), cmul(M[1][1],N[1][1]))]
+];
+const mat2vec = (M, v) => [
+  cadd(cmul(M[0][0],v[0]), cmul(M[0][1],v[1])),
+  cadd(cmul(M[1][0],v[0]), cmul(M[1][1],v[1]))
+];
+const identity2 = () => [[C(1),C(0)],[C(0),C(1)]];
+
+// ============ Jones matrices ============
+function polarizerMatrix(theta) {
+  const c = Math.cos(theta), s = Math.sin(theta);
+  return [
+    [C(c*c), C(s*c)],
+    [C(s*c), C(s*s)]
+  ];
+}
+
+function hwpMatrix(theta) {
+  const c2 = Math.cos(2*theta), s2 = Math.sin(2*theta);
+  return [
+    [C(c2), C(s2)],
+    [C(s2), C(-c2)]
+  ];
+}
+
+function qwpMatrix(theta) {
+  const c = Math.cos(theta), s = Math.sin(theta);
+  return [
+    [cadd(C(c*c), cmul(C(0,1),C(s*s))), cmul(csub(C(1),C(0,1)), C(s*c))],
+    [cmul(csub(C(1),C(0,1)), C(s*c)), cadd(C(s*s), cmul(C(0,1),C(c*c)))]
+  ];
+}
+
+function beamsplitterMatrix(theta) {
+  const c = Math.cos(theta), s = Math.sin(theta);
+  return [
+    [C(c), cmul(C(0,1),C(s))],
+    [cmul(C(0,1),C(s)), C(c)]
+  ];
+}
+
+function getJonesMatrix(type, angleDeg) {
+  const theta = angleDeg * Math.PI / 180;
+  switch(type) {
+    case 'polarizer': return polarizerMatrix(theta);
+    case 'hwp': return hwpMatrix(theta);
+    case 'qwp': return qwpMatrix(theta);
+    case 'beamsplitter': return beamsplitterMatrix(theta);
+  }
+}
+
+// ============ Stokes parameters from Jones vector ============
+function jonestoStokes(v) {
+  const Ex = v[0], Ey = v[1];
+  const S0 = cabs2(Ex) + cabs2(Ey);
+  if (S0 < 1e-12) return [0, 0, 0, 0];
+  const S1 = (cabs2(Ex) - cabs2(Ey)) / S0;
+  const ExEy_ = cmul(Ex, cconj(Ey));
+  const S2 = 2 * ExEy_[0] / S0;
+  const S3 = 2 * ExEy_[1] / S0;
+  return [1, S1, S2, S3];
+}
+
+function classifyPolarization(S) {
+  const [_, s1, s2, s3] = S;
+  const tol = 0.05;
+  if (Math.abs(s1 - 1) < tol) return 'Horizontal';
+  if (Math.abs(s1 + 1) < tol) return 'Vertical';
+  if (Math.abs(s2 - 1) < tol) return 'Diagonal (+45°)';
+  if (Math.abs(s2 + 1) < tol) return 'Anti-diagonal (−45°)';
+  if (Math.abs(s3 - 1) < tol) return 'Right Circular';
+  if (Math.abs(s3 + 1) < tol) return 'Left Circular';
+  if (Math.abs(s3) < tol) return 'Linear';
+  if (Math.abs(Math.sqrt(s1*s1+s2*s2)) < tol) return 'Circular';
+  return 'Elliptical';
+}
+
+// ============ Component data ============
+const components = [];
+let nextId = 0;
+const compMeta = {
+  polarizer:     { label: 'Polarizer',         icon: 'P', cls: 'icon-pol' },
+  hwp:           { label: 'Half-Wave Plate',    icon: 'λ/2', cls: 'icon-hwp' },
+  qwp:           { label: 'Quarter-Wave Plate', icon: 'λ/4', cls: 'icon-qwp' },
+  beamsplitter:  { label: 'Beam Splitter',      icon: 'BS', cls: 'icon-bs' },
+};
+
+window.addComponent = function(type) {
+  components.push({ id: nextId++, type, angle: 0 });
+  renderList();
+  update();
+};
+
+window.removeComponent = function(id) {
+  const idx = components.findIndex(c => c.id === id);
+  if (idx >= 0) components.splice(idx, 1);
+  renderList();
+  update();
+};
+
+window.setAngle = function(id, val) {
+  const comp = components.find(c => c.id === id);
+  if (comp) comp.angle = parseFloat(val);
+  document.getElementById('angle-val-' + id).textContent = val + '°';
+  update();
+};
+
+function renderList() {
+  const list = document.getElementById('components-list');
+  const empty = document.getElementById('empty-msg');
+  if (components.length === 0) {
+    list.innerHTML = '<div class="empty-msg" id="empty-msg"><span>⬆</span>Add optical components above<br>to start building your experiment</div>';
+    return;
+  }
+  list.innerHTML = components.map((comp, i) => {
+    const m = compMeta[comp.type];
+    return `<div class="component-card">
+      <div class="card-header">
+        <span class="card-title"><span class="card-icon ${m.cls}">${m.icon}</span>${i+1}. ${m.label}</span>
+        <button class="remove-btn" onclick="removeComponent(${comp.id})" title="Remove">&times;</button>
+      </div>
+      <div class="slider-row">
+        <label>Angle</label>
+        <input type="range" min="0" max="360" value="${comp.angle}" step="1" oninput="setAngle(${comp.id}, this.value)">
+        <span class="angle-val" id="angle-val-${comp.id}">${comp.angle}°</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============ Initial states ============
+function getInitialState() {
+  const sel = document.getElementById('initial-state').value;
+  const inv2 = 1/Math.sqrt(2);
+  switch(sel) {
+    case 'H': return [C(1), C(0)];
+    case 'V': return [C(0), C(1)];
+    case 'D': return [C(inv2), C(inv2)];
+    case 'A': return [C(inv2), C(-inv2)];
+    case 'R': return [C(inv2), C(0, -inv2)];
+    case 'L': return [C(inv2), C(0, inv2)];
+  }
+}
+
+// ============ Compute full chain ============
+function computeChain() {
+  let state = getInitialState();
+  const states = [{ state: [...state], label: 'Input' }];
+  let combinedMatrix = identity2();
+
+  for (const comp of components) {
+    const M = getJonesMatrix(comp.type, comp.angle);
+    combinedMatrix = mat2mul(M, combinedMatrix);
+    state = mat2vec(M, state);
+    states.push({ state: [...state], label: compMeta[comp.type].label + ' @ ' + comp.angle + '°' });
+  }
+
+  return { states, combinedMatrix, finalState: state };
+}
+
+// ============ Format complex number ============
+function fmtC(c) {
+  const [re, im] = c;
+  const r = Math.abs(re) < 0.005 ? 0 : re;
+  const i = Math.abs(im) < 0.005 ? 0 : im;
+  if (i === 0) return r.toFixed(2);
+  if (r === 0) return i.toFixed(2) + 'i';
+  return r.toFixed(2) + (i > 0 ? '+' : '') + i.toFixed(2) + 'i';
+}
+
+// ============ Three.js scene ============
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(2.5, 1.8, 2.5);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2;
+controls.maxDistance = 8;
+
+// Ambient + directional light
+scene.add(new THREE.AmbientLight(0x404060, 1.5));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(3, 5, 3);
+scene.add(dirLight);
+
+// Sphere wireframe
+const sphereGeo = new THREE.SphereGeometry(1, 48, 48);
+const sphereMat = new THREE.MeshPhysicalMaterial({
+  color: 0x1e3a5f,
+  transparent: true,
+  opacity: 0.12,
+  roughness: 0.3,
+  metalness: 0.1,
+  side: THREE.DoubleSide,
+});
+const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+scene.add(sphere);
+
+// Wireframe overlay
+const wireGeo = new THREE.SphereGeometry(1.001, 24, 24);
+const wireMat = new THREE.MeshBasicMaterial({ color: 0x334155, wireframe: true, transparent: true, opacity: 0.15 });
+scene.add(new THREE.Mesh(wireGeo, wireMat));
+
+// Axes
+function makeAxis(dir, color, len=1.35) {
+  const mat = new THREE.LineBasicMaterial({ color });
+  const pts = [new THREE.Vector3(), new THREE.Vector3(...dir).multiplyScalar(len)];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  scene.add(new THREE.Line(geo, mat));
+  // negative
+  const pts2 = [new THREE.Vector3(), new THREE.Vector3(...dir).multiplyScalar(-len)];
+  const geo2 = new THREE.BufferGeometry().setFromPoints(pts2);
+  const mat2 = new THREE.LineDashedMaterial({ color, dashSize: 0.05, gapSize: 0.05, transparent: true, opacity: 0.4 });
+  const line2 = new THREE.Line(geo2, mat2);
+  line2.computeLineDistances();
+  scene.add(line2);
+}
+makeAxis([1,0,0], 0xef4444);
+makeAxis([0,1,0], 0x10b981);
+makeAxis([0,0,1], 0x3b82f6);
+
+// Equator + meridian circles
+function makeCircle(axis, color) {
+  const pts = [];
+  for (let i = 0; i <= 128; i++) {
+    const t = (i/128) * Math.PI * 2;
+    if (axis === 'z') pts.push(new THREE.Vector3(Math.cos(t), Math.sin(t), 0));
+    else if (axis === 'x') pts.push(new THREE.Vector3(0, Math.cos(t), Math.sin(t)));
+    else pts.push(new THREE.Vector3(Math.cos(t), 0, Math.sin(t)));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.2 });
+  scene.add(new THREE.Line(geo, mat));
+}
+makeCircle('z', 0x475569);
+makeCircle('x', 0x475569);
+makeCircle('y', 0x475569);
+
+// Axis label sprites
+function makeLabel(text, pos, color) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 32px sans-serif';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 64, 32);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+  const sprite = new THREE.Sprite(mat);
+  sprite.position.set(...pos);
+  sprite.scale.set(0.4, 0.2, 1);
+  scene.add(sprite);
+}
+makeLabel('H', [1.55, 0, 0], '#ef4444');
+makeLabel('V', [-1.55, 0, 0], '#f87171');
+makeLabel('D', [0, 1.55, 0], '#10b981');
+makeLabel('A', [0, -1.55, 0], '#34d399');
+makeLabel('R', [0, 0, 1.55], '#3b82f6');
+makeLabel('L', [0, 0, -1.55], '#60a5fa');
+
+// State point
+const pointGeo = new THREE.SphereGeometry(0.06, 16, 16);
+const pointMat = new THREE.MeshPhysicalMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.6, roughness: 0.2 });
+const statePoint = new THREE.Mesh(pointGeo, pointMat);
+scene.add(statePoint);
+
+// Glow around state point
+const glowGeo = new THREE.SphereGeometry(0.12, 16, 16);
+const glowMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.2 });
+const stateGlow = new THREE.Mesh(glowGeo, glowMat);
+scene.add(stateGlow);
+
+// Trail line
+let trailLine = null;
+
+function updateTrail(stokesPath) {
+  if (trailLine) scene.remove(trailLine);
+  if (stokesPath.length < 2) return;
+
+  const pts = stokesPath.map(s => new THREE.Vector3(s[1], s[2], s[3]));
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+
+  // Color gradient along the path
+  const colors = new Float32Array(pts.length * 3);
+  for (let i = 0; i < pts.length; i++) {
+    const t = i / (pts.length - 1);
+    // Orange start -> Cyan end
+    colors[i*3]   = 1.0 - t * 0.6;
+    colors[i*3+1] = 0.5 + t * 0.5;
+    colors[i*3+2] = 0.1 + t * 0.9;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const mat = new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2, transparent: true, opacity: 0.85 });
+  trailLine = new THREE.Line(geo, mat);
+  scene.add(trailLine);
+}
+
+// Intermediate state dots
+const intermediateDots = [];
+function updateIntermediateDots(stokesPath) {
+  // Remove old
+  intermediateDots.forEach(d => scene.remove(d));
+  intermediateDots.length = 0;
+
+  for (let i = 0; i < stokesPath.length - 1; i++) {
+    const s = stokesPath[i];
+    const geo = new THREE.SphereGeometry(0.035, 12, 12);
+    const t = i / Math.max(stokesPath.length - 1, 1);
+    const color = new THREE.Color().setHSL(0.08 + t * 0.4, 0.9, 0.6);
+    const mat = new THREE.MeshBasicMaterial({ color });
+    const dot = new THREE.Mesh(geo, mat);
+    dot.position.set(s[1], s[2], s[3]);
+    scene.add(dot);
+    intermediateDots.push(dot);
+  }
+}
+
+// ============ Beam path SVG ============
+function updateBeamPath(statesData) {
+  const svg = document.getElementById('beam-svg');
+  const n = statesData.length;
+  if (n < 1) { svg.innerHTML = ''; return; }
+
+  const w = 330, h = 40;
+  const margin = 20;
+  const span = w - 2 * margin;
+
+  let html = `<line x1="${margin}" y1="20" x2="${w-margin}" y2="20" stroke="#334155" stroke-width="2"/>`;
+  // Arrowhead
+  html += `<polygon points="${w-margin},20 ${w-margin-8},16 ${w-margin-8},24" fill="#334155"/>`;
+
+  const colors = { input: '#60a5fa', polarizer: '#ef4444', hwp: '#f59e0b', qwp: '#10b981', beamsplitter: '#8b5cf6' };
+
+  statesData.forEach((s, i) => {
+    const x = n === 1 ? margin : margin + (i / (n-1)) * span;
+    const color = i === 0 ? colors.input : colors[components[i-1]?.type] || '#60a5fa';
+    html += `<circle cx="${x}" cy="20" r="5" fill="${color}" stroke="#0a0e17" stroke-width="2"/>`;
+  });
+
+  svg.innerHTML = html;
+}
+
+// ============ Main update ============
+// Animated state (for smooth interpolation)
+let targetStokes = [1, 1, 0, 0];
+let currentStokes = [1, 1, 0, 0];
+
+window.update = function() {
+  const { states, combinedMatrix, finalState } = computeChain();
+
+  // Stokes path
+  const stokesPath = states.map(s => jonestoStokes(s.state));
+  const finalStokes = stokesPath[stokesPath.length - 1];
+  targetStokes = finalStokes;
+
+  // Update trail
+  updateTrail(stokesPath);
+  updateIntermediateDots(stokesPath);
+  updateBeamPath(states);
+
+  // Jones display
+  const M = combinedMatrix;
+  document.getElementById('jones-display').textContent =
+    `[ ${fmtC(M[0][0]).padStart(8)}  ${fmtC(M[0][1]).padStart(8)} ]\n[ ${fmtC(M[1][0]).padStart(8)}  ${fmtC(M[1][1]).padStart(8)} ]`;
+
+  // State panel
+  const fs = finalState;
+  const intensity = cabs2(fs[0]) + cabs2(fs[1]);
+  document.getElementById('sv-jones').textContent = `[ ${fmtC(fs[0])}, ${fmtC(fs[1])} ]`;
+  document.getElementById('sv-stokes').textContent = `(${finalStokes[1].toFixed(3)}, ${finalStokes[2].toFixed(3)}, ${finalStokes[3].toFixed(3)})`;
+  document.getElementById('sv-type').textContent = classifyPolarization(finalStokes);
+  document.getElementById('sv-intensity').textContent = (intensity * 100).toFixed(1) + '%';
+};
+
+// ============ Animation loop ============
+function onResize() {
+  const vp = document.getElementById('viewport');
+  const w = vp.clientWidth, h = vp.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Smooth interpolation of state point
+  for (let i = 1; i <= 3; i++) {
+    currentStokes[i] += (targetStokes[i] - currentStokes[i]) * 0.15;
+  }
+
+  statePoint.position.set(currentStokes[1], currentStokes[2], currentStokes[3]);
+  stateGlow.position.copy(statePoint.position);
+
+  // Pulse glow
+  const t = performance.now() * 0.003;
+  glowMat.opacity = 0.15 + 0.1 * Math.sin(t);
+  stateGlow.scale.setScalar(1 + 0.15 * Math.sin(t));
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+update();
+</script>
+</body>
+</html>
